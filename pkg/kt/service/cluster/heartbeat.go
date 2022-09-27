@@ -47,7 +47,8 @@ func SetupTimeDifference() error {
 
 // SetupHeartBeat setup heartbeat watcher
 func SetupHeartBeat(name, namespace string, updater func(string, string)) {
-	ticker := time.NewTicker(time.Minute *util.ResourceHeartBeatIntervalMinus - util.RandomSeconds(0, 10))
+	// 启动定时器，定期执行更新函数
+	ticker := time.NewTicker(time.Minute*util.ResourceHeartBeatIntervalMinus - util.RandomSeconds(0, 10))
 	go func() {
 		for range ticker.C {
 			updater(name, namespace)
@@ -57,9 +58,9 @@ func SetupHeartBeat(name, namespace string, updater func(string, string)) {
 
 // SetupPortForwardHeartBeat setup heartbeat watcher for port forward
 func SetupPortForwardHeartBeat(port int) *time.Ticker {
-	ticker := time.NewTicker(util.PortForwardHeartBeatIntervalSec * time.Second - util.RandomSeconds(0, 5))
+	ticker := time.NewTicker(util.PortForwardHeartBeatIntervalSec*time.Second - util.RandomSeconds(0, 5))
 	go func() {
-		TickLoop:
+	TickLoop:
 		for {
 			select {
 			case <-ticker.C:

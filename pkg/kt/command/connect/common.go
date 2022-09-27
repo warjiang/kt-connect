@@ -19,7 +19,7 @@ func setupDns(shadowPodName, shadowPodIp string) error {
 		log.Info().Msgf("Setting up dns in hosts mode")
 		dump2HostsNamespaces := ""
 		pos := len(util.DnsModeHosts)
-		if len(opt.Get().Connect.DnsMode) > pos + 1 && opt.Get().Connect.DnsMode[pos:pos+1] == ":" {
+		if len(opt.Get().Connect.DnsMode) > pos+1 && opt.Get().Connect.DnsMode[pos:pos+1] == ":" {
 			dump2HostsNamespaces = opt.Get().Connect.DnsMode[pos+1:]
 		}
 		if err := dumpToHost(dump2HostsNamespaces); err != nil {
@@ -62,8 +62,8 @@ func setupDns(shadowPodName, shadowPodIp string) error {
 }
 
 func getDnsOrder(dnsMode string) []string {
-	if ! strings.Contains(dnsMode, ":") {
-		return []string{ util.DnsOrderCluster, util.DnsOrderUpstream }
+	if !strings.Contains(dnsMode, ":") {
+		return []string{util.DnsOrderCluster, util.DnsOrderUpstream}
 	}
 	return strings.Split(strings.SplitN(dnsMode, ":", 2)[1], ",")
 }
@@ -73,7 +73,7 @@ func watchServicesAndPods(namespace string, svcToIp map[string]string, headlessP
 	go cluster.Ins().WatchService("", namespace,
 		func(svc *coreV1.Service) {
 			// ignore add service event during watch setup
-			if time.Now().Unix() - setupTime > 3 {
+			if time.Now().Unix()-setupTime > 3 {
 				svcToIp, headlessPods = getServiceHosts(namespace, shortDomainOnly)
 				_ = dns.DumpHosts(svcToIp, namespace)
 			}
@@ -150,7 +150,9 @@ func getServiceHosts(namespace string, shortDomainOnly bool) (map[string]string,
 }
 
 func getOrCreateShadow() (string, string, string, error) {
+	// 1. 生成shadow容器名, {kt-connect-shadow-[长度为5的随机容器名]}
 	shadowPodName := fmt.Sprintf("kt-connect-shadow-%s", strings.ToLower(util.RandomString(5)))
+	// 2. 开启shadow容器共享模式则使用默认shadow容器名
 	if opt.Get().Connect.ShareShadow {
 		shadowPodName = fmt.Sprintf("kt-connect-shadow-daemon")
 	}
@@ -186,7 +188,7 @@ func getEnvs() map[string]string {
 
 func getLabels() map[string]string {
 	labels := map[string]string{
-		util.KtRole:    util.RoleConnectShadow,
+		util.KtRole: util.RoleConnectShadow,
 	}
 	if opt.Get().Global.UseShadowDeployment {
 		labels[util.KtTarget] = util.RandomString(20)

@@ -34,9 +34,9 @@ func main() {
 	cobra.EnableCommandSorting = false
 
 	var rootCmd = &cobra.Command{
-		Use:   "ktctl",
+		Use:     "ktctl",
 		Version: version,
-		Short: "A utility tool to help you work with Kubernetes dev environment more efficiently",
+		Short:   "A utility tool to help you work with Kubernetes dev environment more efficiently",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

@@ -19,7 +19,7 @@ func (k *Kubernetes) GetDeployment(name string, namespace string) (*appV1.Deploy
 // GetDeploymentsByLabel get deployments by label
 func (k *Kubernetes) GetDeploymentsByLabel(labels map[string]string, namespace string) (pods *appV1.DeploymentList, err error) {
 	return k.Clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: labelApi.SelectorFromSet(labels).String(),
+		LabelSelector:  labelApi.SelectorFromSet(labels).String(),
 		TimeoutSeconds: &apiTimeout,
 	})
 }
@@ -46,6 +46,13 @@ func (k *Kubernetes) RemoveDeployment(name, namespace string) (err error) {
 
 // IncreaseDeploymentRef increase deployment ref count by 1
 func (k *Kubernetes) IncreaseDeploymentRef(name string, namespace string) error {
+	/*
+		todo 这里实现可能有问题，没有锁机制，也没有重试，多人更新肯定会有问题
+		如果有其他命令行依赖了该deployment则在该deployment的annotation中进行引用标记
+		metadata:
+		  annotations:
+		    kt-ref-count: "1"
+	*/
 	app, err := k.GetDeployment(name, namespace)
 	if err != nil {
 		return err
@@ -88,15 +95,15 @@ func (k *Kubernetes) DecreaseDeploymentRef(name string, namespace string) (clean
 func (k *Kubernetes) UpdateDeploymentHeartBeat(name, namespace string) {
 	if _, err := k.Clientset.AppsV1().Deployments(namespace).
 		Patch(context.TODO(), name, types.JSONPatchType, []byte(resourceHeartbeatPatch()), metav1.PatchOptions{}); err != nil {
-		if healthy, exists := LastHeartBeatStatus["deployment_" + name]; healthy || !exists {
+		if healthy, exists := LastHeartBeatStatus["deployment_"+name]; healthy || !exists {
 			log.Warn().Err(err).Msgf("Failed to update heart beat of deployment %s", name)
 		} else {
 			log.Debug().Err(err).Msgf("Deployment %s heart beat interrupted", name)
 		}
-		LastHeartBeatStatus["deployment_" + name] = false
+		LastHeartBeatStatus["deployment_"+name] = false
 	} else {
 		log.Debug().Msgf("Heartbeat deployment %s ticked at %s", name, util.FormattedTime())
-		LastHeartBeatStatus["deployment_" + name] = true
+		LastHeartBeatStatus["deployment_"+name] = true
 	}
 }
 
