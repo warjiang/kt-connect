@@ -58,12 +58,14 @@ func SetupHeartBeat(name, namespace string, updater func(string, string)) {
 
 // SetupPortForwardHeartBeat setup heartbeat watcher for port forward
 func SetupPortForwardHeartBeat(port int) *time.Ticker {
+	// 启动定时器，定期轮训port是否存活
 	ticker := time.NewTicker(util.PortForwardHeartBeatIntervalSec*time.Second - util.RandomSeconds(0, 5))
 	go func() {
 	TickLoop:
 		for {
 			select {
 			case <-ticker.C:
+				// 检测方法，dial一次然后close掉，执行没有超时即可
 				if conn, err := net.Dial("tcp", fmt.Sprintf(":%d", port)); err != nil {
 					log.Warn().Err(err).Msgf("Heartbeat port forward %d ticked failed", port)
 				} else {
@@ -71,6 +73,7 @@ func SetupPortForwardHeartBeat(port int) *time.Ticker {
 					_ = conn.Close()
 				}
 			case <-time.After(2 * util.PortForwardHeartBeatIntervalSec * time.Second):
+				// 如果ticker定时器执行超时了，达到2 * timeout则触发此case分支，跳出循环，完成goroutine的资源回收
 				log.Debug().Msgf("Port forward heartbeat %d stopped", port)
 				break TickLoop
 			}

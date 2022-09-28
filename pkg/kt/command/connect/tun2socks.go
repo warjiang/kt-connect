@@ -22,13 +22,18 @@ func ByTun2Socks() error {
 	}
 
 	localSshPort := util.GetRandomTcpPort()
+	// port-forward localSshPort <=> common.StandardSshPort
 	if _, err = transmission.SetupPortForwardToLocal(podName, common.StandardSshPort, localSshPort); err != nil {
 		return err
 	}
+	// 启动socks5代理
+	// 1. ssh root@127.0.0.1 -P ${localSshPort} <=> ssh root@127.0.0.1 -P common.StandardSshPort
+	// 2. ssh tunnel => socks5 tunnel
 	if err = startSocks5Connection(podIP, privateKeyPath, localSshPort, true); err != nil {
 		return err
 	}
 
+	// 安装 tun 设备
 	if opt.Get().Connect.DisableTunDevice {
 		if util.IsWindows() {
 			log.Warn().Msgf("DNS mode will switch to 'hosts' when tun device is disabled")
@@ -39,12 +44,13 @@ func ByTun2Socks() error {
 		if err = tun.Ins().CheckContext(); err != nil {
 			return err
 		}
+		// socks5代理暴露出来给tun设备使用
 		socksAddr := fmt.Sprintf("socks5://127.0.0.1:%d", opt.Get().Connect.ProxyPort)
 		if err = tun.Ins().ToSocks(socksAddr); err != nil {
 			return err
 		}
 		log.Info().Msgf("Tun device %s is ready", tun.Ins().GetName())
-
+		// 配置系统路由表，
 		if !opt.Get().Connect.DisableTunRoute {
 			if err = setupTunRoute(); err != nil {
 				return err
@@ -56,8 +62,14 @@ func ByTun2Socks() error {
 }
 
 func setupTunRoute() error {
+	// 根据 k8s 集群的 svc 和 pod 生成 cidr
 	cidr, excludeCidr := cluster.Ins().ClusterCidr(opt.Get().Global.Namespace)
-
+	/*
+		根据cidr设置 tun 设备的规则
+		比如cidr有存在一项 192.168.1.0/24, tun设备为 utun2, 则会生成如下规则
+		ifconfig utun2 inet 192.168.1.0/24 192.168.1.0 或者 ifconfig utun2 add 192.168.1.0/24 192.168.1.0
+		route add -net 192.168.1.0/24 -interface utun2
+	*/
 	err := tun.Ins().SetRoute(cidr, excludeCidr)
 	if err != nil {
 		if tun.IsAllRouteFailError(err) {
@@ -90,7 +102,7 @@ func startSocks5Connection(podIP, privateKey string, localSshPort int, isInitCon
 		// will hang here if not error happen
 		err := sshchannel.Ins().StartSocks5Proxy(privateKey, sshAddress, socks5Address)
 		if !gone {
-			res <-err
+			res <- err
 		}
 		log.Debug().Err(err).Msgf("Socks proxy interrupted")
 		if ticker != nil {

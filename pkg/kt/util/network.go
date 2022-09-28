@@ -89,7 +89,7 @@ func FindInvalidRemotePort(exposePorts string, svcPorts map[int]string) string {
 
 // IsValidIp check if specified ip address valid
 func IsValidIp(ip string) bool {
-	if ok, err := regexp.MatchString("^" + IpAddrPattern + "$", ip); ok && err == nil {
+	if ok, err := regexp.MatchString("^"+IpAddrPattern+"$", ip); ok && err == nil {
 		return true
 	}
 	return false
@@ -97,13 +97,20 @@ func IsValidIp(ip string) bool {
 
 // ExtractHostIp Get host ip address from url
 func ExtractHostIp(url string) string {
+	// url 一般输入为: https://10.248.188.248:6443
+	// 不包含: 可能是域名形式, 直接返回
 	if !strings.Contains(url, ":") {
 		return ""
 	}
+	// strings.Split(url, ":") => [http,//10.248.188.248,6443]
+	// 取下标为1的元素, 同时移除前后的/
+	// 返回 10.248.188.248
 	host := strings.Trim(strings.Split(url, ":")[1], "/")
 	if IsValidIp(host) {
 		return host
 	}
+	// 输入可能是 https://host:6443
+	// 多调用一次dns解析
 	ips, err := net.LookupIP(host)
 	if err != nil {
 		return ""

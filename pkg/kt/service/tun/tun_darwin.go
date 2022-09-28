@@ -12,6 +12,8 @@ import (
 
 // CheckContext check everything needed for tun setup
 func (s *Cli) CheckContext() error {
+	// 检查 ifconfig、route、netstat 命令是否存在
+	// todo 后续可以做成前置安装 + 运行时检查
 	if !util.CanRun(exec.Command("which", "ifconfig")) {
 		return fmt.Errorf("failed to found 'ifconfig' command")
 	}
@@ -112,13 +114,17 @@ func (s *Cli) RestoreRoute() error {
 }
 
 var tunName = ""
+
 func (s *Cli) GetName() string {
 	if tunName != "" {
 		return tunName
 	}
+	// 默认值为 utun9
 	tunName = fmt.Sprintf("%s%d", util.TunNameMac, 9)
 	if ifaces, err := net.Interfaces(); err == nil {
 		tunN := 0
+		// 遍历所有的网卡设备，找到最大的一个seqId
+		// 比如开发机器中包含了utun0、utun1、utun2, 则最后计算出来的tunN就是2
 		for _, i := range ifaces {
 			if strings.HasPrefix(i.Name, util.TunNameMac) {
 				if num, err2 := strconv.Atoi(strings.TrimPrefix(i.Name, util.TunNameMac)); err2 == nil && num > tunN {
@@ -126,7 +132,8 @@ func (s *Cli) GetName() string {
 				}
 			}
 		}
-		tunName = fmt.Sprintf("%s%d", util.TunNameMac, tunN + 1)
+		// max tun number + 1,组装出kt关联的tun设备名
+		tunName = fmt.Sprintf("%s%d", util.TunNameMac, tunN+1)
 	}
 	return tunName
 }

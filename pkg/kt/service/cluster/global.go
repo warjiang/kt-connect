@@ -78,7 +78,7 @@ func (k *Kubernetes) watchResource(name, namespace, resourceType string, objType
 		objType,
 		0,
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj any) { fAdd(obj) },
+			AddFunc:    func(obj any) { fAdd(obj) },
 			DeleteFunc: func(obj any) { fDel(obj) },
 			UpdateFunc: func(oldObj, newObj any) { fMod(newObj) },
 		},
@@ -93,7 +93,9 @@ func (k *Kubernetes) watchResource(name, namespace, resourceType string, objType
 }
 
 func isSingleIp(ipRange string) bool {
-	return !strings.Contains(ipRange, "/") || strings.Split(ipRange,"/")[1] == "32"
+	// 127.0.0.1 不包含 /24 网络后缀
+	// 127.0.0.1/32 网络后缀为32
+	return !strings.Contains(ipRange, "/") || strings.Split(ipRange, "/")[1] == "32"
 }
 
 func decreaseRef(refCount string) (count string, err error) {
