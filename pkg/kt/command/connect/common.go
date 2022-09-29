@@ -29,13 +29,18 @@ func setupDns(shadowPodName, shadowPodIp string) error {
 		log.Info().Msgf("Setting up dns in pod mode")
 		return dns.SetNameServer(shadowPodIp)
 	} else if strings.HasPrefix(opt.Get().Connect.DnsMode, util.DnsModeLocalDns) {
+		// localDNS 模式
 		log.Info().Msgf("Setting up dns in local mode")
+		// 获取 namespace 下面 svc 到 pod ip 之间的映射关系 & headless 服务的 pod 列表
 		svcToIp, headlessPods := getServiceHosts(opt.Get().Global.Namespace, true)
+		// svc name 到 pod ip 的映射关系写入到 hosts 文件中
 		if err := dns.DumpHosts(svcToIp, ""); err != nil {
 			return err
 		}
+		// 监听服务的变化, 变更之后会自动重新写入到 hosts 文件中
 		watchServicesAndPods(opt.Get().Global.Namespace, svcToIp, headlessPods, true)
 
+		// 生成随机tcp端口号
 		forwardedPodPort := util.GetRandomTcpPort()
 		if _, err := transmission.SetupPortForwardToLocal(shadowPodName, common.StandardDnsPort, forwardedPodPort); err != nil {
 			return err
@@ -115,15 +120,19 @@ func dumpToHost(targetNamespaces string) error {
 func getServiceHosts(namespace string, shortDomainOnly bool) (map[string]string, []string) {
 	hosts := make(map[string]string)
 	podNames := make([]string, 0)
+	// 获取指定namespace下面的所有服务
 	services, err := cluster.Ins().GetAllServiceInNamespace(namespace)
 	if err == nil {
 		for _, service := range services.Items {
 			ip := service.Spec.ClusterIP
 			if ip == "" || ip == "None" {
+				// 处理 headless 服务
+				// 根据 label 过滤去对应的 pod 列表
 				pods, err2 := cluster.Ins().GetPodsByLabel(service.Spec.Selector, namespace)
 				if err2 != nil || len(pods.Items) == 0 {
 					continue
 				}
+				// 遍历所有 pod 列表, 遍历出分配了 ip 的 pod, 记录到 podNames 数组中
 				for _, p := range pods.Items {
 					ip = p.Status.PodIP
 					if ip != "" {
@@ -133,15 +142,20 @@ func getServiceHosts(namespace string, shortDomainOnly bool) (map[string]string,
 				}
 				log.Debug().Msgf("Headless service found: %s.%s %s", service.Name, namespace, ip)
 			} else {
+				// 处理普通服务
 				log.Debug().Msgf("Service found: %s.%s %s", service.Name, namespace, ip)
 			}
 			if shortDomainOnly {
+				// 开启 shortDomainOnly 的情况下， 维护 svc name 到 pod ip的映射关系
 				hosts[service.Name] = ip
 			} else {
+				// 除了维护当前namespace下 svc name 到 pod ip之间的映射关系之外
 				if namespace == opt.Get().Global.Namespace {
 					hosts[service.Name] = ip
 				}
+				// 还维护了 svcname.namespace 到 pod ip之间的映射
 				hosts[fmt.Sprintf("%s.%s", service.Name, namespace)] = ip
+				// 以及fqdn形式即 svcname.namespace.svc.domain 到 pod ip 之间的映射关系
 				hosts[fmt.Sprintf("%s.%s.svc.%s", service.Name, namespace, opt.Get().Connect.ClusterDomain)] = ip
 			}
 		}

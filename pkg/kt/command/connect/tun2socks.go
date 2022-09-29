@@ -50,7 +50,7 @@ func ByTun2Socks() error {
 			return err
 		}
 		log.Info().Msgf("Tun device %s is ready", tun.Ins().GetName())
-		// 配置系统路由表，
+		// 配置系统路由表
 		if !opt.Get().Connect.DisableTunRoute {
 			if err = setupTunRoute(); err != nil {
 				return err

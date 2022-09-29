@@ -138,6 +138,7 @@ func mergeLines(linesBefore []string, linesAfter []string) []string {
 }
 
 func loadHostsFile() ([]string, error) {
+	// 加载 host 文件，返回 string slice, 每个slice item就是一行
 	var lines []string
 	file, err := os.Open(getHostsPath())
 	if err != nil {
@@ -156,10 +157,11 @@ func loadHostsFile() ([]string, error) {
 }
 
 func updateHostsFile(lines []string) error {
+	// 更新hosts文件
 	lock := flock.New(fmt.Sprintf("%s/hosts.lock", util.KtLockDir))
-	timeoutContext, cancel := context.WithTimeout(context.TODO(), 2 * time.Second)
+	timeoutContext, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
 	defer cancel()
-	if ok, err := lock.TryLockContext(timeoutContext, 100 * time.Millisecond); !ok {
+	if ok, err := lock.TryLockContext(timeoutContext, 100*time.Millisecond); !ok {
 		return fmt.Errorf("failed to require hosts lock")
 	} else if err != nil {
 		log.Error().Err(err).Msgf("require hosts file failed with error")
@@ -195,6 +197,7 @@ func updateHostsFile(lines []string) error {
 }
 
 func getHostsPath() string {
+	// 返回 host path文件路径，*nix系统下面一般为 /etc/hosts 文件
 	if os.Getenv("HOSTS_PATH") == "" {
 		return os.ExpandEnv(filepath.FromSlash(util.HostsFilePath))
 	} else {
