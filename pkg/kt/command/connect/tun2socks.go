@@ -58,6 +58,7 @@ func ByTun2Socks() error {
 			log.Info().Msgf("Route to tun device completed")
 		}
 	}
+	// 配置dns
 	return setupDns(podName, podIP)
 }
 

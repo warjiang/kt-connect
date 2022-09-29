@@ -42,5 +42,6 @@ func (s *Cli) ToSocks(sockAddr string) error {
 		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 		<-sigCh
 	}()
+	// go routine 外部一直等待, 直到tunXX设备安装&启动成功
 	return <-tunSignal
 }

@@ -20,16 +20,17 @@ import (
 
 // Prepare setup log level, time difference and kube config
 func Prepare() error {
-	// then setup logs
+	// 配置 zero log
 	SetupLogger()
 
+	// 组装 k8s 配置, 内部会完成restConfig和clientSet对象的初始化
 	if err := combineKubeOpts(); err != nil {
 		return err
 	}
 
 	log.Info().Msgf("KtConnect %s start at %d (%s %s)",
 		opt.Store.Version, os.Getpid(), runtime.GOOS, runtime.GOARCH)
-
+	// 对时间
 	if !opt.Get().Global.UseLocalTime {
 		if err := cluster.SetupTimeDifference(); err != nil {
 			return err
@@ -39,6 +40,7 @@ func Prepare() error {
 }
 
 func SetupLogger() {
+	// --debug 模式下调整zerolog的日志等级为debug
 	if opt.Get().Global.Debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
@@ -63,8 +65,9 @@ func SetupProcess(componentName string) (chan os.Signal, error) {
 // combineKubeOpts set default options of kubectl if not assign
 func combineKubeOpts() (err error) {
 	var config *clientcmdapi.Config
-	if opt.Get().Global.Kubeconfig != ""{
-		// if kubeconfig specified, always read from it
+	if opt.Get().Global.Kubeconfig != "" {
+		// 通过 KUBECONFIG 的环境变量和 client-go 进行交互
+		// 设置完环境变量之后, client-go 内部初始化 rest.Config 时会读取 KUBECONFIG 环境变量
 		_ = os.Setenv(util.EnvKubeConfig, opt.Get().Global.Kubeconfig)
 		config, err = clientcmd.NewDefaultClientConfigLoadingRules().Load()
 	} else if customize, exist := opt.GetCustomizeKubeConfig(); exist {
@@ -80,6 +83,8 @@ func combineKubeOpts() (err error) {
 		// should not happen, but issue-275 and issue-285 may cause by it
 		return fmt.Errorf("failed to parse kubeconfig")
 	}
+	// kubeconfig 文件中可能会包含多个 context, 如果手动指定了context则从kubeconfig中过滤出来
+	// 并设置到config.CurrentContext字段上
 	if len(opt.Get().Global.Context) > 0 {
 		found := false
 		for name, _ := range config.Contexts {
@@ -93,6 +98,9 @@ func combineKubeOpts() (err error) {
 		}
 		config.CurrentContext = opt.Get().Global.Context
 	}
+	// kubeconfig的一个context下面会包含多个namespace, 如果用户没有手动指定namespace
+	// 则优先查看context上是否指定了namespace, 如果指定了则优先使用context指定的namespace
+	// 如果没有指定则使用default的namespace
 	if len(opt.Get().Global.Namespace) == 0 {
 		ctx, exists := config.Contexts[config.CurrentContext]
 		if exists && len(ctx.Namespace) > 0 {
@@ -106,14 +114,17 @@ func combineKubeOpts() (err error) {
 			return config, nil
 		}
 	}
+	// 生成restConfig
 	restConfig, err := clientcmd.BuildConfigFromKubeconfigGetter("", kubeConfigGetter())
 	if err != nil {
 		return err
 	}
+	// 生成clientSet对象
 	clientSet, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return err
 	}
+	// clientSet、restConfig 回写到 global 对象上
 	opt.Store.Clientset = clientSet
 	opt.Store.RestConfig = restConfig
 

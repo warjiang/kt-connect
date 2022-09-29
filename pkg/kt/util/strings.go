@@ -102,6 +102,8 @@ func DashSeparated(word string) string {
 // UnCapitalize convert dash separated string to capitalized string
 // TODO: 0.4 - remove this method, use DashSeparated() instead
 func UnCapitalize(word string) string {
+	// Mode => mode
+	// DnsMode => dnsMode
 	firstLetter := true
 	return strings.Map(
 		func(r rune) rune {

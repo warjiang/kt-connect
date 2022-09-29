@@ -13,12 +13,14 @@ import (
 
 const logFilePrefix = "kt-"
 
-var BackgroundLogger = io.Discard
+var BackgroundLogger = io.Discard // 默认情况下丢弃日志
 
 func PrepareLogger(enable bool) {
 	if !enable {
 		return
 	}
+	// os.TempDir()  获取平台无关的tmp目录, 比如 /var/folders/25/4pgdz6v54gj71wz0mn7b77940000gn/T/
+	// ioutil.TempFile(os.TempDir(), logFilePrefix)  以logFilePrefix为前缀在tmp目录下生成一个临时文件 比如 /var/folders/25/4pgdz6v54gj71wz0mn7b77940000gn/T/kt-2902307175
 	if tmpFile, err := ioutil.TempFile(os.TempDir(), logFilePrefix); err != nil {
 		log.Warn().Err(err).Msgf("Cannot create background log file")
 	} else {
@@ -58,5 +60,5 @@ func CleanBackgroundLogs() {
 
 // isExpired check whether file haven't been modified over 24 hours
 func isExpired(info fs.FileInfo) bool {
-	return info.ModTime().Unix() < time.Now().Unix() - (3600 * 24)
+	return info.ModTime().Unix() < time.Now().Unix()-(3600*24)
 }

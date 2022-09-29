@@ -9,12 +9,12 @@ import (
 )
 
 type OptionConfig struct {
-	Target string
-	Alias string
+	Target       string
+	Alias        string
 	DefaultValue any
-	Description string
-	Hidden bool
-	Required bool
+	Description  string
+	Hidden       bool
+	Required     bool
 }
 
 func SetOptions(cmd *cobra.Command, flags *flag.FlagSet, optionStore any, config []OptionConfig) {
@@ -22,10 +22,26 @@ func SetOptions(cmd *cobra.Command, flags *flag.FlagSet, optionStore any, config
 	cmd.Flags().SortFlags = false
 	cmd.InheritedFlags().SortFlags = false
 	flags.SortFlags = false
+	/*
+		config的形式如下:
+		[
+			{
+				Target:      "Mode",
+		        DefaultValue: "tun2socks",
+				Description: "Connect mode 'tun2socks' or 'sshuttle'",
+			},
+			{
+				Target:      "DnsMode",
+				DefaultValue: "localDNS",
+				Description: "Specify how to resolve service domains, can be 'localDNS', 'podDNS', 'hosts' or 'hosts:<namespaces>', for multiple namespaces use ',' separation",
+			},
+		]
+	*/
 	for _, c := range config {
-		name := util.UnCapitalize(c.Target)
-		field := reflect.ValueOf(optionStore).Elem().FieldByName(c.Target)
-		switch c.DefaultValue.(type) {
+		// DnsMode
+		name := util.UnCapitalize(c.Target)                                // => dnsMode
+		field := reflect.ValueOf(optionStore).Elem().FieldByName(c.Target) // => 根据DnsMode索引到对应的field字段
+		switch c.DefaultValue.(type) {                                     // DefaultValue 只支持三种形式 string、boolean、int
 		case string:
 			fieldPtr := (*string)(unsafe.Pointer(field.UnsafeAddr()))
 			defaultValue := c.DefaultValue.(string)

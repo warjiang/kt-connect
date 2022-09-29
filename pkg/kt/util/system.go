@@ -23,9 +23,11 @@ var TimeDifference int64 = 0
 func GetDaemonRunning(componentName string) int {
 	files, _ := ioutil.ReadDir(KtPidDir)
 	for _, f := range files {
+		// f.Name() 比如: connect-40972.pid
 		if strings.HasPrefix(f.Name(), componentName) && strings.HasSuffix(f.Name(), ".pid") {
-			from := len(componentName) + 1
-			to := len(f.Name()) - len(".pid")
+			// 提取pid值
+			from := len(componentName) + 1    // +1 是因为 -
+			to := len(f.Name()) - len(".pid") // 截断尾部的 .pid
 			pid, err := strconv.Atoi(f.Name()[from:to])
 			if err == nil && IsProcessExist(pid) {
 				return pid
@@ -37,10 +39,12 @@ func GetDaemonRunning(componentName string) int {
 
 // IsProcessExist check whether specified process still running
 func IsProcessExist(pid int) bool {
+	// 判断当前pid是否存在
 	proc, err := ps.FindProcess(pid)
 	if proc == nil || err != nil {
 		return false
 	}
+	// program 执行的全路径上必须包含ktctl
 	return strings.Contains(proc.Executable(), "ktctl")
 }
 
@@ -78,9 +82,9 @@ func watchPidFile(pidFile string, ch chan os.Signal) {
 
 	for event := range watcher.Events {
 		log.Debug().Msgf("Received event %s", event)
-		if event.Op & fs.Remove == fs.Remove || event.Op & fs.Rename == fs.Rename {
+		if event.Op&fs.Remove == fs.Remove || event.Op&fs.Rename == fs.Rename {
 			log.Info().Msgf("Pid file was removed")
-			ch <-os.Interrupt
+			ch <- os.Interrupt
 		}
 	}
 }

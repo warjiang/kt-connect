@@ -16,11 +16,11 @@ import (
 // NewConnectCommand return new connect command
 func NewConnectCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "connect",
+		Use:   "connect",
 		Short: "Create a network tunnel to kubernetes cluster",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return fmt.Errorf("too many options specified (%s)", strings.Join(args, ",") )
+				return fmt.Errorf("too many options specified (%s)", strings.Join(args, ","))
 			}
 			if err := preCheck(); err != nil {
 				return err
@@ -75,6 +75,7 @@ func preCheck() error {
 	if err := checkPermissionAndOptions(); err != nil {
 		return err
 	}
+	// 检查
 	if pid := util.GetDaemonRunning(util.ComponentConnect); pid > 0 {
 		return fmt.Errorf("another connect process already running at %d, exiting", pid)
 	}
@@ -99,12 +100,14 @@ func silenceCleanup() {
 }
 
 func checkPermissionAndOptions() error {
+	// 如果没有以超管用户执行, 分平台给出报错
 	if !util.IsRunAsAdmin() {
 		if util.IsWindows() {
 			return fmt.Errorf("permission declined, please re-run connect command as Administrator")
 		}
 		return fmt.Errorf("permission declined, please re-run connect command with 'sudo'")
 	}
+	// connect mode为tun2socks模式下不支持podDNS的dns模式
 	if opt.Get().Connect.Mode == util.ConnectModeTun2Socks && opt.Get().Connect.DnsMode == util.DnsModePodDns {
 		return fmt.Errorf("dns mode '%s' is not available for connect mode '%s'", util.DnsModePodDns, util.ConnectModeTun2Socks)
 	}

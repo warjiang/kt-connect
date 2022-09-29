@@ -16,25 +16,30 @@ var LastHeartBeatStatus = make(map[string]bool)
 
 // SetupTimeDifference get time difference between cluster and local
 func SetupTimeDifference() error {
+	// 创建临时容器
 	rectifierPodName := fmt.Sprintf("%s%s", util.RectifierPodPrefix, strings.ToLower(util.RandomString(5)))
 	_, err := Ins().CreateRectifierPod(rectifierPodName)
 	if err != nil {
 		return err
 	}
+	// 在临时容器中执行 date +%s命令
 	stdout, stderr, err := Ins().ExecInPod(util.DefaultContainer, rectifierPodName, opt.Get().Global.Namespace, "date", "+%s")
 	if err != nil {
 		return err
 	}
+	// 异步销毁临时容器，用异步方式执行是为了避免销毁容器带来的时间开销，造成diff时间不准确
 	go func() {
 		if err2 := Ins().RemovePod(rectifierPodName, opt.Get().Global.Namespace); err2 != nil {
 			log.Debug().Err(err).Msgf("Failed to remove pod %s", rectifierPodName)
 		}
 	}()
+	// 临时容器执行命令返回的结果解析转换成时间对象
 	remoteTime, err := strconv.ParseInt(stdout, 10, 0)
 	if err != nil {
 		log.Warn().Msgf("Invalid cluster time: '%s' %s", stdout, stderr)
 		return err
 	}
+	// 时间求差, [-1,1] 之间都是符合要求的时间差
 	timeDifference := remoteTime - time.Now().Unix()
 	if timeDifference >= -1 && timeDifference <= 1 {
 		log.Debug().Msgf("No time difference")
