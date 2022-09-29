@@ -46,6 +46,7 @@ func ByTun2Socks() error {
 		}
 		// socks5代理暴露出来给tun设备使用
 		socksAddr := fmt.Sprintf("socks5://127.0.0.1:%d", opt.Get().Connect.ProxyPort)
+		// 安装tun设备的过程中会设置tun设备的代理为sock5的地址
 		if err = tun.Ins().ToSocks(socksAddr); err != nil {
 			return err
 		}
