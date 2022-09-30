@@ -123,14 +123,14 @@ const (
 	ResourceHeartBeatIntervalMinus = 2
 	// PortForwardHeartBeatIntervalSec interval of port-forward heart beat
 	PortForwardHeartBeatIntervalSec = 60
-
 )
 
 var (
-	KtHome = fmt.Sprintf("%s/.kt", UserHome)
-	KtKeyDir = fmt.Sprintf("%s/key", KtHome)
-	KtPidDir = fmt.Sprintf("%s/pid", KtHome)
-	KtLockDir = fmt.Sprintf("%s/lock", KtHome)
+	KtHome       = fmt.Sprintf("%s/.kt", UserHome)
+	KtKeyDir     = fmt.Sprintf("%s/key", KtHome)
+	KtPidDir     = fmt.Sprintf("%s/pid", KtHome)
+	KtLockDir    = fmt.Sprintf("%s/lock", KtHome)
 	KtProfileDir = fmt.Sprintf("%s/profile", KtHome)
 	KtConfigFile = fmt.Sprintf("%s/config", KtHome)
+	KtProxyFile  = fmt.Sprintf("%s/proxy.yaml", KtHome)
 )

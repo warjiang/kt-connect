@@ -4,6 +4,7 @@ import (
 	"github.com/alibaba/kt-connect/pkg/kt/command"
 	"github.com/alibaba/kt-connect/pkg/kt/command/general"
 	opt "github.com/alibaba/kt-connect/pkg/kt/command/options"
+	"github.com/alibaba/kt-connect/pkg/kt/service/proxy"
 	"github.com/alibaba/kt-connect/pkg/kt/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -26,6 +27,9 @@ func init() {
 	}
 	_ = util.FixFileOwner(util.KtConfigFile)
 	// TODO: 0.4 - auto remove old kt home folder .ktctl
+	if _, err := proxy.InitSshConfig(util.KtProxyFile); err != nil {
+		panic(err)
+	}
 }
 
 func main() {

@@ -4,17 +4,23 @@ import (
 	"fmt"
 	opt "github.com/alibaba/kt-connect/pkg/kt/command/options"
 	"github.com/alibaba/kt-connect/pkg/kt/service/cluster"
+	"github.com/alibaba/kt-connect/pkg/kt/service/proxy"
+	"github.com/alibaba/kt-connect/pkg/kt/service/sshchannel"
 	"github.com/alibaba/kt-connect/pkg/kt/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/wzshiming/socks5"
 	k8sRuntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/klog/v2"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 )
 
@@ -119,6 +125,38 @@ func combineKubeOpts() (err error) {
 	if err != nil {
 		return err
 	}
+	if tmpUrl, err := url.Parse(restConfig.Host); err == nil {
+		remoteHost := tmpUrl.Host
+		idx := strings.Index(remoteHost, ":")
+		if idx != -1 {
+			remoteHost = remoteHost[:idx]
+		}
+		sshConfig := proxy.FindSshConfig(remoteHost)
+		if sshConfig != nil {
+			dialer, err := sshConfig.BuildSshProxy(proxy.SshConfigMap)
+			if err == nil {
+				go func() {
+					socks5Address := "127.0.0.1:32280"
+					svc := &socks5.Server{
+						Logger:    sshchannel.SocksLogger{},
+						ProxyDial: dialer.DialContext,
+					}
+					err = svc.ListenAndServe("tcp", socks5Address)
+					if err != nil {
+						return
+					}
+				}()
+				//socks5dialer, err := socks5.NewDialer("socks5://127.0.0.1:32280")
+				//if err == nil {
+				//	restConfig.Dial = socks5dialer.DialContext
+				//}
+				restConfig.Proxy = func(request *http.Request) (*url.URL, error) {
+					return url.Parse("socks5://127.0.0.1:32280")
+				}
+			}
+		}
+	}
+
 	// 生成clientSet对象
 	clientSet, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
